@@ -191,7 +191,7 @@
     align-items: center;
     gap: 7px;
     min-width: 140px;
-    max-width: 230px;
+    max-width: 590px;
   }
   #graphic-preview.visible { opacity: 1; transform: scale(1); }
   #graphic-preview .preview-graphic {
@@ -303,7 +303,7 @@
 
   #play-top { height: 5%; border-bottom: 2px solid var(--border); background: white; display: flex; flex-direction: column; justify-content: space-between; }
   #practice  { height: 50%; border-bottom: 2px solid var(--border); background: var(--green-section); display: flex; flex-direction: column; }
-  #practice .sec-label { color: var(--green-light); }
+  #practice .sec-label { color: var(--green-dark); }
   #progress  { height: 20%; border-bottom: 2px solid var(--border); background: var(--green-section); display: flex; flex-direction: column; }
   #progress .sec-label { color: var(--green-dark); }
   #play-bot  { height: 10%; background: white; display: flex; flex-direction: column; justify-content: space-between; }
@@ -364,6 +364,36 @@
   /* Scrollbar */
   #sidebar::-webkit-scrollbar { width: 5px; }
   #sidebar::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+  /* ── Age group dropdown ── */
+  #age-select-wrap {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  #age-select-wrap label {
+    font-size: 11px;
+    color: #aaa;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  #age-select {
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    outline: none;
+    transition: background .15s;
+  }
+  #age-select:hover { background: rgba(255,255,255,.2); }
+  #age-select option { background: #3a3a3a; color: #fff; }
+
 </style>
 </head>
 <body>
@@ -373,7 +403,16 @@
   <!-- TOP BAR -->
   <header id="topbar">
     <h1>Oregon SC — Practice Plan Builder</h1>
-    <span>Spring 2026</span>
+    <div id="age-select-wrap">
+      <label for="age-select">Age Group</label>
+      <select id="age-select" onchange="setAgeGroup(this.value)">
+        <option value="U8">U8</option>
+        <option value="U10">U10</option>
+        <option value="U12" selected>U12</option>
+        <option value="U14">U14</option>
+        <option value="U19">U19</option>
+      </select>
+    </div>
     <button class="top-btn secondary" onclick="clearAll()">Clear all</button>
     <button class="top-btn primary" onclick="doPrint()">&#128438; Print / Save PDF</button>
   </header>
@@ -399,10 +438,8 @@
         <div id="meta-box">
           <div class="meta-row">Week: ___________</div>
           <div class="meta-row">Topic: ___________</div>
-          
         </div>
       </div>
-
       <!-- PLAY TOP -->
       <div id="play-top" class="sec">
         <span class="sec-label">Play</span>
@@ -447,71 +484,193 @@
 // ─────────────────────────────────────────────
 //  GRAPHIC GROUPS
 //
-//  To add a new item:
-//    1. Upload the SVG to the graphics/ folder in your GitHub repo
-//    2. Add an entry below: { id, label, src }
-//       - id    : unique string, no spaces (e.g. 'dribbling4')
-//       - label : short display name shown under the thumbnail
-//       - src   : path relative to index.html (e.g. 'graphics/my_drill.svg')
+//  Each group has an `items` object keyed by age group (U8–U19).
+//  When the dropdown changes, the sidebar grids reload with that
+//  age group's graphics automatically.
 //
-//  To add a new group:
-//    Add a new object to this array with id, name, color, and items: []
+//  To add a new graphic:
+//    1. Upload SVG to graphics/ in your GitHub repo
+//    2. Add it to the relevant age group array(s) below:
+//       { id, label, src }
+//         id    — unique across all groups (e.g. 'dribbling4')
+//         label — short caption shown under the thumbnail
+//         src   — path relative to index.html
+//
+//  An age group key can share the same item as another — just
+//  reference the same src in both.
 // ─────────────────────────────────────────────
 const GRAPHIC_GROUPS = [
   {
     id: 'dribbling',
     name: 'Dribbling',
     color: '#E05A1B',
-    items: [
-      { id: 'dribbling1', label: 'Dribbling 1', src: 'graphics/dribbling_1.svg' },
-      { id: 'dribbling2', label: 'Dribbling 2', src: 'graphics/dribbling_2.svg' },
-      { id: 'dribbling3', label: 'Dribbling 3', src: 'graphics/dribbling_3svg.svg' },
-    ]
+    items: {
+      U8:  [
+        { id: 'dribbling2',    label: 'Dribbling 2', src: 'graphics/dribbling_2.svg' },
+      ],
+      U10: [
+        { id: 'dribbling2',    label: 'Dribbling 2', src: 'graphics/dribbling_2.svg' },
+        { id: 'dribbling3',    label: 'Dribbling 3', src: 'graphics/dribbling_3svg.svg' },
+      ],
+      U12: [
+        { id: 'dribbling2',    label: 'Dribbling 2', src: 'graphics/dribbling_2.svg' },
+        { id: 'dribbling3',    label: 'Dribbling 3', src: 'graphics/dribbling_3svg.svg' },
+      ],
+      U14: [
+        { id: 'dribbling3',    label: 'Dribbling 3', src: 'graphics/dribbling_3svg.svg' },
+      ],
+      U19: [
+        { id: 'dribbling2',    label: 'Dribbling 2', src: 'graphics/dribbling_2.svg' },
+        { id: 'dribbling3',    label: 'Dribbling 3', src: 'graphics/dribbling_3svg.svg' },
+      ],
+    }
   },
   {
     id: 'passing',
     name: 'Passing',
     color: '#185FA5',
-    items: [
-      // Example: { id: 'passing1', label: 'Wall Pass', src: 'graphics/passing_1.svg' },
-    ]
+    items: {
+      U8:  [],
+      U10: [],
+      U12: [],
+      U14: [],
+      U19: [],
+      // Example when you have passing SVGs:
+      // U10: [{ id: 'passing1', label: 'Wall Pass', src: 'graphics/passing_1.svg' }],
+    }
   },
   {
     id: 'footskills',
     name: 'Foot Skills',
     color: '#1D9E75',
-    items: [
-      { id: 'footskills1', label: 'Foot Skills 1', src: 'graphics/footskills_1.svg' },
-      { id: 'footskills2', label: 'Foot Skills 2', src: 'graphics/footskills_2.svg' },
-      { id: 'footskills3', label: 'Foot Skills 3', src: 'graphics/footskills_3.svg' },
-    ]
+    items: {
+      U8:  [
+        { id: 'footskills1', label: 'Foot Skills 1', src: 'graphics/footskills_1.svg' },
+      ],
+      U10: [
+        { id: 'footskills1', label: 'Foot Skills 1', src: 'graphics/footskills_1.svg' },
+        { id: 'footskills2', label: 'Foot Skills 2', src: 'graphics/footskills_2.svg' },
+      ],
+      U12: [
+        { id: 'footskills1', label: 'Foot Skills 1', src: 'graphics/footskills_1.svg' },
+        { id: 'footskills2', label: 'Foot Skills 2', src: 'graphics/footskills_2.svg' },
+        { id: 'footskills3', label: 'Foot Skills 3', src: 'graphics/footskills_3.svg' },
+      ],
+      U14: [
+        { id: 'footskills2', label: 'Foot Skills 2', src: 'graphics/footskills_2.svg' },
+        { id: 'footskills3', label: 'Foot Skills 3', src: 'graphics/footskills_3.svg' },
+      ],
+      U19: [
+        { id: 'footskills2', label: 'Foot Skills 2', src: 'graphics/footskills_2.svg' },
+        { id: 'footskills3', label: 'Foot Skills 3', src: 'graphics/footskills_3.svg' },
+      ],
+    }
   },
   {
     id: 'shooting',
     name: 'Shooting',
     color: '#c0392b',
-    items: [
-      // Example: { id: 'shooting1', label: 'Shooting 1', src: 'graphics/shooting_1.svg' },
-    ]
+    items: {
+      U8:  [],
+      U10: [],
+      U12: [],
+      U14: [],
+      U19: [],
+      // Example: U12: [{ id: 'shooting1', label: 'Shooting 1', src: 'graphics/shooting_1.svg' }],
+    }
   },
   {
     id: 'progress',
     name: 'Progress',
     color: '#7F77DD',
-    items: [
-      { id: 'dribbling_progress1',  label: 'Dribbling Prog.',  src: 'graphics/dribbling_progress_1.svg' },
-      { id: 'footskills_progress1', label: 'Foot Skills Prog.', src: 'graphics/footskills_progress_1.svg' },
-    ]
+    items: {
+      U8:  [
+        { id: 'dribbling_progress1', label: 'Dribbling Prog.', src: 'graphics/dribbling_progress_1.svg' },
+      ],
+      U10: [
+        { id: 'dribbling_progress1',  label: 'Dribbling Prog.',   src: 'graphics/dribbling_progress_1.svg' },
+        { id: 'footskills_progress1', label: 'Foot Skills Prog.', src: 'graphics/footskills_progress_1.svg' },
+      ],
+      U12: [
+        { id: 'dribbling_progress1',  label: 'Dribbling Prog.',   src: 'graphics/dribbling_progress_1.svg' },
+        { id: 'footskills_progress1', label: 'Foot Skills Prog.', src: 'graphics/footskills_progress_1.svg' },
+      ],
+      U14: [
+        { id: 'footskills_progress1', label: 'Foot Skills Prog.', src: 'graphics/footskills_progress_1.svg' },
+      ],
+      U19: [
+        { id: 'dribbling_progress1',  label: 'Dribbling Prog.',   src: 'graphics/dribbling_progress_1.svg' },
+        { id: 'footskills_progress1', label: 'Foot Skills Prog.', src: 'graphics/footskills_progress_1.svg' },
+      ],
+    }
   },
 ];
 
 // ─────────────────────────────────────────────
-//  DROP ZONES
+//  AGE GROUP ZONE PRESETS
+//
+//  When the dropdown changes, these presets auto-fill the drop zones.
+//  Each key matches the <option> value in the topbar dropdown.
+//  Each zone id maps to a src path in graphics/.
+//  Zones with null are left empty.
+//
+//  Zone ids: 'prac-top', 'prac-mid', 'prac-bot', 'prog-center'
+// ─────────────────────────────────────────────
+const AGE_ZONE_PRESETS = {
+  U8: {
+    'prac-top':    'graphics/dribbling_2.svg',
+    'prac-mid':    'graphics/footskills_1.svg',
+    'prac-bot':    'graphics/footskills_2.svg',
+    'prog-center': 'graphics/dribbling_progress_1.svg',
+  },
+  U10: {
+    'prac-top':    'graphics/dribbling_3svg.svg',
+    'prac-mid':    'graphics/footskills_2.svg',
+    'prac-bot':    'graphics/footskills_3.svg',
+    'prog-center': 'graphics/footskills_progress_1.svg',
+  },
+  U12: {
+    'prac-top':    'graphics/dribbling_2.svg',
+    'prac-mid':    'graphics/footskills_3.svg',
+    'prac-bot':    'graphics/dribbling_3svg.svg',
+    'prog-center': 'graphics/dribbling_progress_1.svg',
+  },
+  U14: {
+    'prac-top':    'graphics/dribbling_3svg.svg',
+    'prac-mid':    'graphics/footskills_1.svg',
+    'prac-bot':    'graphics/footskills_2.svg',
+    'prog-center': 'graphics/footskills_progress_1.svg',
+  },
+  U19: {
+    'prac-top':    'graphics/footskills_3.svg',
+    'prac-mid':    'graphics/dribbling_2.svg',
+    'prac-bot':    'graphics/dribbling_3svg.svg',
+    'prog-center': 'graphics/footskills_progress_1.svg',
+  },
+};
+
+// ─────────────────────────────────────────────
+//  SET AGE GROUP — reloads sidebar graphics and drop zone presets
+// ─────────────────────────────────────────────
+function setAgeGroup(ageKey) {
+  const preset = AGE_ZONE_PRESETS[ageKey];
+  if (!preset) return;
+  // Rebuild sidebar with age-appropriate graphics
+  buildSidebar(ageKey);
+  // Reload zone presets
+  filledZones = {};
+  DROP_ZONES.forEach(z => {
+    if (preset[z.id]) filledZones[z.id] = { src: preset[z.id] };
+  });
+  rebuildZones();
+}
+
+// ─────────────────────────────────────────────
 //  Defines where graphics snap on the template.
 //  parent must match an element id in the HTML above.
 // ─────────────────────────────────────────────
 const DROP_ZONES = [
-  { id: 'prac-top',    parent: 'practice', label: 'Practice — Top',    x: '5%', y: '1%', w: '90%', h: '33%' },
+  { id: 'prac-top',    parent: 'practice', label: 'Practice — Top',    x: '5%', y: '1%',  w: '90%', h: '33%' },
   { id: 'prac-mid',    parent: 'practice', label: 'Practice — Middle', x: '5%', y: '34%', w: '90%', h: '33%' },
   { id: 'prac-bot',    parent: 'practice', label: 'Practice — Bottom', x: '5%', y: '67%', w: '90%', h: '33%' },
   { id: 'prog-center', parent: 'progress', label: 'Progress',          x: '5%', y: '10%', w: '90%', h: '74%' },
@@ -543,7 +702,7 @@ function showPreview(src, label, anchorEl) {
 
     const sidebarRect = document.getElementById('sidebar').getBoundingClientRect();
     const anchorRect  = anchorEl.getBoundingClientRect();
-    const previewW = 230, previewH = 175, margin = 10;
+    const previewW = 580, previewH = 175, margin = 10;
 
     let left = sidebarRect.right + margin;
     let top  = anchorRect.top + anchorRect.height / 2 - previewH / 2;
@@ -564,14 +723,19 @@ function hidePreview() {
 // ─────────────────────────────────────────────
 //  BUILD SIDEBAR
 // ─────────────────────────────────────────────
-function buildSidebar() {
+function buildSidebar(ageKey) {
   const sidebar = document.getElementById('sidebar');
+  // Track which groups are currently open so we can restore them
+  const openGroups = new Set(
+    [...sidebar.querySelectorAll('.group.open')].map(el => el.id)
+  );
   sidebar.querySelectorAll('.group').forEach(el => el.remove());
 
   GRAPHIC_GROUPS.forEach(group => {
     const div = document.createElement('div');
     div.className = 'group';
     div.id = 'grp-' + group.id;
+    if (openGroups.has(div.id)) div.classList.add('open');
 
     // Header
     const hdr = document.createElement('div');
@@ -607,18 +771,18 @@ function buildSidebar() {
     div.appendChild(body);
     sidebar.insertBefore(div, sidebar.querySelector('.sidebar-hint'));
 
-    // Populate built-in items
-    group.items.forEach(item => addGraphicToGrid(group.id, item.id, item.label, item.src, false));
+    // Populate built-in items for this age group
+    const ageItems = (group.items[ageKey] || []);
+    ageItems.forEach(item => addGraphicToGrid(group.id, item.id, item.label, item.src, false));
 
-    // Show placeholder if group has no built-in items
-    if (group.items.length === 0) {
+    if (ageItems.length === 0) {
       const empty = document.createElement('p');
       empty.className = 'group-empty';
-      empty.textContent = 'No graphics yet — upload below';
+      empty.textContent = 'No graphics for this age group';
       grid.appendChild(empty);
     }
 
-    // Re-populate any uploaded items
+    // Re-populate any user-uploaded items (persist across age group changes)
     if (uploadedGroups[group.id]) {
       uploadedGroups[group.id].forEach(u => addGraphicToGrid(group.id, u.id, u.label, u.src, true));
     }
@@ -784,8 +948,8 @@ function doPrint() {
 // ─────────────────────────────────────────────
 //  INIT
 // ─────────────────────────────────────────────
-buildSidebar();
 buildZones();
+setAgeGroup('U12'); // builds sidebar + loads zone preset for default selection
 
 // Open first group by default
 const firstGroup = document.querySelector('.group');
