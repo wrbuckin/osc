@@ -108,22 +108,6 @@
   .group-body { display: none; padding: 8px; background: var(--sidebar-bg); }
   .group.open .group-body { display: block; }
 
-  /* Upload zone */
-  .upload-zone {
-    border: 1.5px dashed #b0b0a0;
-    border-radius: 6px;
-    padding: 8px;
-    text-align: center;
-    cursor: pointer;
-    margin-bottom: 8px;
-    transition: border-color .12s, background .12s;
-    font-size: 10px;
-    color: var(--text-muted);
-    line-height: 1.5;
-  }
-  .upload-zone:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
-  .upload-zone input { display: none; }
-
   /* Graphic grid */
   .glist {
     display: grid;
@@ -148,19 +132,6 @@
   .gitem:active { cursor: grabbing; }
   .gitem img { width: 36px; height: 36px; object-fit: contain; pointer-events: none; display: block; }
   .gitem span { font-size: 9px; color: var(--text-muted); text-align: center; line-height: 1.2; pointer-events: none; word-break: break-word; }
-  .gitem .del-graphic {
-    display: none;
-    position: absolute;
-    top: -5px; right: -5px;
-    width: 14px; height: 14px;
-    background: #c0392b; color: #fff;
-    border: none; border-radius: 50%;
-    font-size: 9px; cursor: pointer;
-    align-items: center; justify-content: center;
-    line-height: 1;
-  }
-  .gitem:hover .del-graphic { display: flex; }
-
   /* Empty-group hint */
   .group-empty {
     font-size: 10px;
@@ -679,8 +650,7 @@ const DROP_ZONES = [
 // ─────────────────────────────────────────────
 //  STATE
 // ─────────────────────────────────────────────
-let filledZones    = {};  // zoneId → { src: string }
-let uploadedGroups = {};  // groupId → [ { id, label, src: dataURL } ]
+let filledZones = {};  // zoneId → { src: string }
 
 // ─────────────────────────────────────────────
 //  GRAPHIC PREVIEW
@@ -751,21 +721,11 @@ function buildSidebar(ageKey) {
     const body = document.createElement('div');
     body.className = 'group-body';
 
-    // Upload zone
-    const uploadZone = document.createElement('label');
-    uploadZone.className = 'upload-zone';
-    uploadZone.innerHTML = `<input type="file" accept="image/*,.svg" multiple>&#43; Upload images to this group`;
-    uploadZone.querySelector('input').addEventListener('change', (e) => {
-      handleUpload(group.id, e.target.files);
-      e.target.value = '';
-    });
-
     // Grid
     const grid = document.createElement('div');
     grid.className = 'glist';
     grid.id = 'grid-' + group.id;
 
-    body.appendChild(uploadZone);
     body.appendChild(grid);
     div.appendChild(hdr);
     div.appendChild(body);
@@ -773,7 +733,7 @@ function buildSidebar(ageKey) {
 
     // Populate built-in items for this age group
     const ageItems = (group.items[ageKey] || []);
-    ageItems.forEach(item => addGraphicToGrid(group.id, item.id, item.label, item.src, false));
+    ageItems.forEach(item => addGraphicToGrid(group.id, item.id, item.label, item.src));
 
     if (ageItems.length === 0) {
       const empty = document.createElement('p');
@@ -781,22 +741,16 @@ function buildSidebar(ageKey) {
       empty.textContent = 'No graphics for this age group';
       grid.appendChild(empty);
     }
-
-    // Re-populate any user-uploaded items (persist across age group changes)
-    if (uploadedGroups[group.id]) {
-      uploadedGroups[group.id].forEach(u => addGraphicToGrid(group.id, u.id, u.label, u.src, true));
-    }
   });
 }
 
 // ─────────────────────────────────────────────
 //  ADD GRAPHIC ITEM TO GRID
 // ─────────────────────────────────────────────
-function addGraphicToGrid(groupId, itemId, label, src, isDeletable) {
+function addGraphicToGrid(groupId, itemId, label, src) {
   const grid = document.getElementById('grid-' + groupId);
   if (!grid) return;
 
-  // Remove empty placeholder if present
   const empty = grid.querySelector('.group-empty');
   if (empty) empty.remove();
 
@@ -815,19 +769,6 @@ function addGraphicToGrid(groupId, itemId, label, src, isDeletable) {
   lbl.textContent = label;
   el.appendChild(lbl);
 
-  if (isDeletable) {
-    const delBtn = document.createElement('button');
-    delBtn.className = 'del-graphic';
-    delBtn.textContent = '✕';
-    delBtn.title = 'Remove from group';
-    delBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      removeUpload(groupId, itemId);
-      el.remove();
-    });
-    el.appendChild(delBtn);
-  }
-
   el.addEventListener('dragstart', (e) => {
     e.dataTransfer.setData('itemSrc', src);
     e.dataTransfer.effectAllowed = 'copy';
@@ -838,33 +779,6 @@ function addGraphicToGrid(groupId, itemId, label, src, isDeletable) {
   el.addEventListener('mouseleave', () => hidePreview());
 
   grid.appendChild(el);
-}
-
-// ─────────────────────────────────────────────
-//  HANDLE FILE UPLOAD
-// ─────────────────────────────────────────────
-function handleUpload(groupId, files) {
-  if (!uploadedGroups[groupId]) uploadedGroups[groupId] = [];
-  Array.from(files).forEach(file => {
-    if (!file.type.startsWith('image/') && !file.name.endsWith('.svg')) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataURL = e.target.result;
-      const id      = 'upload-' + Date.now() + '-' + Math.random().toString(36).slice(2);
-      const label   = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').slice(0, 18);
-      uploadedGroups[groupId].push({ id, label, src: dataURL });
-      addGraphicToGrid(groupId, id, label, dataURL, true);
-      const grp = document.getElementById('grp-' + groupId);
-      if (grp && !grp.classList.contains('open')) grp.classList.add('open');
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-function removeUpload(groupId, itemId) {
-  if (uploadedGroups[groupId]) {
-    uploadedGroups[groupId] = uploadedGroups[groupId].filter(u => u.id !== itemId);
-  }
 }
 
 // ─────────────────────────────────────────────
