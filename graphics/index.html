@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oregon SC — Practice Plan Builder</title>
+<style>
+  /* ── Reset & base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green-section: #8fae80;
+    --green-dark: #2d4a1e;
+    --oregon-red: #c0392b;
+    --oregon-orange: #E05A1B;
+    --oregon-dark: #3a3a3a;
+    --accent: #185FA5;
+    --accent-light: rgba(24,95,165,0.12);
+    --border: #cccccc;
+    --sidebar-bg: #f7f6f2;
+    --sidebar-border: #e2e0d8;
+    --text: #222;
+    --text-muted: #666;
+    --font: 'Segoe UI', system-ui, sans-serif;
+  }
+
+  html, body {
+    height: 100%;
+    font-family: var(--font);
+    background: #eceae4;
+    color: var(--text);
+  }
+
+  /* ── Layout ── */
+  #shell {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    grid-template-rows: 52px 1fr;
+    height: 100vh;
+    min-height: 600px;
+  }
+
+  /* ── Top bar ── */
+  #topbar {
+    grid-column: 1 / -1;
+    background: var(--oregon-dark);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 20px;
+    border-bottom: 3px solid var(--oregon-red);
+  }
+  #topbar h1 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: .04em;
+    flex: 1;
+  }
+  #topbar span {
+    font-size: 11px;
+    color: #aaa;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .top-btn {
+    padding: 6px 16px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    letter-spacing: .02em;
+    transition: opacity .15s;
+  }
+  .top-btn:hover { opacity: .85; }
+  .top-btn.primary  { background: var(--oregon-red); color: #fff; }
+  .top-btn.secondary { background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.2); }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    overflow-y: auto;
+    padding: 14px 12px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* Group accordion */
+  .group { margin-bottom: 6px; border: 1px solid var(--sidebar-border); border-radius: 8px; overflow: hidden; }
+  .group-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    background: #fff;
+    user-select: none;
+    transition: background .12s;
+  }
+  .group-header:hover { background: #f0efe9; }
+  .group-header .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .group-header .gtitle { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; flex: 1; }
+  .group-header .chevron { font-size: 10px; color: var(--text-muted); transition: transform .2s; }
+  .group.open .chevron { transform: rotate(180deg); }
+  .group-body { display: none; padding: 8px; background: var(--sidebar-bg); }
+  .group.open .group-body { display: block; }
+
+  /* Graphic grid */
+  .glist {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .gitem {
+    background: #fff;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 7px;
+    padding: 7px 4px 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: grab;
+    user-select: none;
+    transition: border-color .12s, box-shadow .12s;
+    position: relative;
+  }
+  .gitem:hover { border-color: var(--accent); box-shadow: 0 2px 6px rgba(24,95,165,.15); }
+  .gitem:active { cursor: grabbing; }
+  .gitem img { width: 36px; height: 36px; object-fit: contain; pointer-events: none; display: block; }
+  .gitem span { font-size: 9px; color: var(--text-muted); text-align: center; line-height: 1.2; pointer-events: none; word-break: break-word; }
+  /* Empty-group hint */
+  .group-empty {
+    font-size: 10px;
+    color: #bbb;
+    text-align: center;
+    padding: 6px 4px 2px;
+    font-style: italic;
+  }
+
+  /* Sidebar hint */
+  .sidebar-hint { font-size: 10px; color: #999; line-height: 1.6; padding: 10px 4px 0; text-align: center; }
+
+  /* ── Graphic preview tooltip ── */
+  #graphic-preview {
+    position: fixed;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.10);
+    padding: 10px;
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(.92);
+    transition: opacity .15s ease, transform .15s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    min-width: 140px;
+    max-width: 590px;
+  }
+  #graphic-preview.visible { opacity: 1; transform: scale(1); }
+  #graphic-preview .preview-graphic {
+    width: 560px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  #graphic-preview .preview-graphic img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+  #graphic-preview .preview-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: center;
+    letter-spacing: .02em;
+  }
+  #graphic-preview .preview-hint {
+    font-size: 9px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  /* ── Canvas area ── */
+  #canvas-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 20px;
+    overflow-y: auto;
+    background: #eceae4;
+  }
+
+  /* ── The template ── */
+  #tpl {
+    width: 100%;
+    max-width: 680px;
+    aspect-ratio: 8.5 / 11;
+    background: white;
+    border: 1px solid #bbb;
+    box-shadow: 0 4px 24px rgba(0,0,0,.18);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    flex-shrink: 0;
+  }
+
+  /* Header */
+  #hdr {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 2px solid var(--border);
+    height: 13%;
+  }
+  #logo-box {
+    width: 13%;
+    display: flex; align-items: center; justify-content: center;
+    padding: 5px;
+    background: white;
+    border-right: 1px solid #ddd;
+    flex-shrink: 0;
+  }
+  #logo-box img { width: 100%; height: 100%; object-fit: contain; }
+  #title-box {
+    flex: 1;
+    display: flex; align-items: center;
+    padding: 0 14px;
+  }
+  #title-box h2 {
+    font-size: clamp(9px, 1.8vw, 17px);
+    font-weight: 700;
+    color: #222;
+    letter-spacing: .01em;
+  }
+  #meta-box {
+    width: 22%;
+    background: #ccc;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 6px 10px;
+    font-size: clamp(6px, .95vw, 10px);
+    gap: 3px;
+    flex-shrink: 0;
+  }
+  #meta-box .meta-row { font-weight: 700; color: #333; }
+
+  /* Sections */
+  .sec { position: relative; }
+  .sec-label {
+    font-size: clamp(6px, .85vw, 10px);
+    font-weight: 700;
+    color: #333;
+    padding: 4px 10px 3px;
+    display: block;
+  }
+  .sec-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 10px 4px;
+    font-size: clamp(5px, .75vw, 8px);
+    color: #555;
+  }
+
+  #play-top { height: 5%; border-bottom: 2px solid var(--border); background: white; display: flex; flex-direction: column; justify-content: space-between; }
+  #practice  { height: 50%; border-bottom: 2px solid var(--border); background: var(--green-section); display: flex; flex-direction: column; }
+  #practice .sec-label { color: var(--green-dark); }
+  #progress  { height: 20%; border-bottom: 2px solid var(--border); background: var(--green-section); display: flex; flex-direction: column; }
+  #progress .sec-label { color: var(--green-dark); }
+  #play-bot  { height: 10%; background: white; display: flex; flex-direction: column; justify-content: space-between; }
+
+  /* Drop zones */
+  .snap-zone {
+    position: absolute;
+    border: 2px dashed rgba(24,95,165,.45);
+    border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .12s, border-color .12s;
+    overflow: hidden;
+  }
+  .snap-zone .zlbl {
+    font-size: clamp(6px, .7vw, 8px);
+    color: rgba(24,95,165,.65);
+    text-align: center;
+    line-height: 1.5;
+    pointer-events: none;
+    padding: 2px 4px;
+  }
+  .snap-zone.over   { background: rgba(24,95,165,.14); border-color: #185FA5; }
+  .snap-zone.filled { border: 2px solid rgba(24,95,165,.35); background: rgba(255,255,255,.1); }
+  .snap-zone.filled .zlbl { display: none; }
+  .placed { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .placed img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .rmv-btn {
+    position: absolute; top: -7px; right: -7px;
+    width: 17px; height: 17px;
+    background: #c0392b; color: #fff;
+    border: none; border-radius: 50%;
+    font-size: 10px; cursor: pointer;
+    display: none; align-items: center; justify-content: center;
+    z-index: 10; line-height: 1;
+  }
+  .snap-zone.filled:hover .rmv-btn { display: flex; }
+
+  /* ── Print styles ── */
+  @media print {
+    html, body { background: white; }
+    #shell { display: block; height: auto; }
+    #topbar, #sidebar { display: none !important; }
+    #canvas-area { padding: 0; background: white; overflow: visible; }
+    #tpl {
+      max-width: 100%;
+      width: 100%;
+      aspect-ratio: 8.5 / 11;
+      box-shadow: none;
+      border: none;
+      border-radius: 0;
+      page-break-after: avoid;
+    }
+    .snap-zone { border: none !important; background: none !important; }
+    .rmv-btn { display: none !important; }
+    .zlbl { display: none !important; }
+  }
+
+  /* Scrollbar */
+  #sidebar::-webkit-scrollbar { width: 5px; }
+  #sidebar::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+  /* ── Age group dropdown ── */
+  #age-select-wrap {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  #age-select-wrap label {
+    font-size: 11px;
+    color: #aaa;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  #age-select {
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    outline: none;
+    transition: background .15s;
+  }
+  #age-select:hover { background: rgba(255,255,255,.2); }
+  #age-select option { background: #3a3a3a; color: #fff; }
+
+</style>
+</head>
+<body>
+
+<div id="shell">
+
+  <!-- TOP BAR -->
+  <header id="topbar">
+    <h1>Oregon SC — Practice Plan Builder</h1>
+    <div id="age-select-wrap">
+      <label for="age-select">Age Group</label>
+      <select id="age-select" onchange="setAgeGroup(this.value)">
+        <option value="U8">U8</option>
+        <option value="U10">U10</option>
+        <option value="U12" selected>U12</option>
+        <option value="U14">U14</option>
+        <option value="U19">U19</option>
+      </select>
+    </div>
+    <button class="top-btn secondary" onclick="clearAll()">Clear all</button>
+    <button class="top-btn primary" onclick="doPrint()">&#128438; Print / Save PDF</button>
+  </header>
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <!-- Groups injected by JS -->
+    <p class="sidebar-hint">Click a group to expand.<br>Drag a graphic onto a template zone to place it.</p>
+  </aside>
+
+  <!-- CANVAS -->
+  <main id="canvas-area">
+    <div id="tpl">
+
+      <!-- HEADER -->
+      <div id="hdr">
+        <div id="logo-box">
+          <img src="graphics/Oregon_SC.png" alt="Oregon Soccer Club logo">
+        </div>
+        <div id="title-box">
+          <h2>Oregon SC Practice Plan Builder</h2>
+        </div>
+        <div id="meta-box">
+          <div class="meta-row">Week: ___________</div>
+          <div class="meta-row">Topic: ___________</div>
+        </div>
+      </div>
+      <!-- PLAY TOP -->
+      <div id="play-top" class="sec">
+        <span class="sec-label">Play</span>
+        <div class="sec-footer">
+          <span>Small Sided Games with Minimal Coaching</span>
+          <span>Duration: __ min</span>
+        </div>
+      </div>
+
+      <!-- PRACTICE -->
+      <div id="practice" class="sec">
+        <span class="sec-label">Practice</span>
+      </div>
+
+      <!-- PROGRESS -->
+      <div id="progress" class="sec">
+        <span class="sec-label">Progress</span>
+      </div>
+
+      <!-- PLAY BOTTOM -->
+      <div id="play-bot" class="sec">
+        <span class="sec-label">Play</span>
+        <div class="sec-footer">
+          <span>Full Field or Small Sided Game, focus coaching on theme</span>
+          <span>Duration: __ min</span>
+        </div>
+      </div>
+
+    </div><!-- /#tpl -->
+  </main>
+
+</div><!-- /#shell -->
+
+<!-- GRAPHIC PREVIEW TOOLTIP -->
+<div id="graphic-preview">
+  <div class="preview-graphic" id="preview-graphic-inner"></div>
+  <div class="preview-label" id="preview-label"></div>
+  <div class="preview-hint">drag onto a zone to place</div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  GRAPHIC GROUPS
+//
+//  Each group has an `items` object keyed by age group (U8–U19).
+//  When the dropdown changes, the sidebar grids reload with that
+//  age group's graphics automatically.
+//
+//  To add a new graphic:
+//    1. Upload SVG to graphics/ in your GitHub repo
+//    2. Add it to the relevant age group array(s) below:
+//       { id, label, src }
+//         id    — unique across all groups (e.g. 'dribbling4')
+//         label — short caption shown under the thumbnail
+//         src   — path relative to index.html
+//
+//  An age group key can share the same item as another — just
+//  reference the same src in both.
+// ─────────────────────────────────────────────
+const GRAPHIC_GROUPS = [
+  {
+    id: 'dribbling',
+    name: 'Dribbling',
+    color: '#E05A1B',
+    items: {
+      U8:  [
+        { id: 'dribbling2',    label: 'Dribbling 2', src: 'graphics/dribbling_2.svg' },
+      ],
+      U10: [
+        { id: 'dribbling2',    label: 'Dribbling 2', src: 'graphics/dribbling_2.svg' },
+        { id: 'dribbling3',    label: 'Dribbling 3', src: 'graphics/dribbling_3svg.svg' },
+      ],
+      U12: [
+        { id: 'dribbling2',    label: 'Dribbling 2', src: 'graphics/dribbling_2.svg' },
+        { id: 'dribbling3',    label: 'Dribbling 3', src: 'graphics/dribbling_3svg.svg' },
+      ],
+      U14: [
+        { id: 'dribbling3',    label: 'Dribbling 3', src: 'graphics/dribbling_3svg.svg' },
+      ],
+      U19: [
+        { id: 'dribbling2',    label: 'Dribbling 2', src: 'graphics/dribbling_2.svg' },
+        { id: 'dribbling3',    label: 'Dribbling 3', src: 'graphics/dribbling_3svg.svg' },
+      ],
+    }
+  },
+  {
+    id: 'passing',
+    name: 'Passing',
+    color: '#185FA5',
+    items: {
+      U8:  [
+        { id: 'passing 1', label: 'Passing 1', src: 'graphics/passing_1.svg'},
+        { id: 'passing 2', label: 'Passing 2', src: 'graphics/passing_2.svg'},
+        { id: 'passing 3', label: 'Passing 3', src: 'graphics/passing_3.svg'},
+        { id: 'passing 5', label: 'Passing 5', src: 'graphics/passing_5.svg'},
+        { id: 'passing 6', label: 'Passing 6', src: 'graphics/passing_6.svg'},
+        { id: 'passing 7', label: 'Passing 7', src: 'graphics/passing_7.svg'}
+      ],
+      U10: [],
+      U12: [],
+      U14: [],
+      U19: [],
+      // Example when you have passing SVGs:
+      // U10: [{ id: 'passing1', label: 'Wall Pass', src: 'graphics/passing_1.svg' }],
+    }
+  },
+  {
+    id: 'footskills',
+    name: 'Foot Skills',
+    color: '#1D9E75',
+    items: {
+      U8:  [
+        { id: 'footskills1', label: 'Foot Skills 1', src: 'graphics/footskills_1.svg' },
+      ],
+      U10: [
+        { id: 'footskills1', label: 'Foot Skills 1', src: 'graphics/footskills_1.svg' },
+        { id: 'footskills2', label: 'Foot Skills 2', src: 'graphics/footskills_2.svg' },
+      ],
+      U12: [
+        { id: 'footskills1', label: 'Foot Skills 1', src: 'graphics/footskills_1.svg' },
+        { id: 'footskills2', label: 'Foot Skills 2', src: 'graphics/footskills_2.svg' },
+        { id: 'footskills3', label: 'Foot Skills 3', src: 'graphics/footskills_3.svg' },
+      ],
+      U14: [
+        { id: 'footskills2', label: 'Foot Skills 2', src: 'graphics/footskills_2.svg' },
+        { id: 'footskills3', label: 'Foot Skills 3', src: 'graphics/footskills_3.svg' },
+      ],
+      U19: [
+        { id: 'footskills2', label: 'Foot Skills 2', src: 'graphics/footskills_2.svg' },
+        { id: 'footskills3', label: 'Foot Skills 3', src: 'graphics/footskills_3.svg' },
+      ],
+    }
+  },
+  {
+    id: 'shooting',
+    name: 'Shooting',
+    color: '#c0392b',
+    items: {
+      U8:  [],
+      U10: [],
+      U12: [],
+      U14: [],
+      U19: [],
+      // Example: U12: [{ id: 'shooting1', label: 'Shooting 1', src: 'graphics/shooting_1.svg' }],
+    }
+  },
+  {
+    id: 'progress',
+    name: 'Progress',
+    color: '#7F77DD',
+    items: {
+      U8:  [
+        { id: 'dribbling_progress1', label: 'Dribbling Prog.', src: 'graphics/dribbling_progress_1.svg' },
+        { id: 'passing_progress2', label: 'Passing Prog.', src: 'graphics/passing_progress_2.svg' },
+      ],
+      U10: [
+        { id: 'dribbling_progress1',  label: 'Dribbling Prog.',   src: 'graphics/dribbling_progress_1.svg' },
+        { id: 'footskills_progress1', label: 'Foot Skills Prog.', src: 'graphics/footskills_progress_1.svg' },
+      ],
+      U12: [
+        { id: 'dribbling_progress1',  label: 'Dribbling Prog.',   src: 'graphics/dribbling_progress_1.svg' },
+        { id: 'footskills_progress1', label: 'Foot Skills Prog.', src: 'graphics/footskills_progress_1.svg' },
+      ],
+      U14: [
+        { id: 'footskills_progress1', label: 'Foot Skills Prog.', src: 'graphics/footskills_progress_1.svg' },
+      ],
+      U19: [
+        { id: 'dribbling_progress1',  label: 'Dribbling Prog.',   src: 'graphics/dribbling_progress_1.svg' },
+        { id: 'footskills_progress1', label: 'Foot Skills Prog.', src: 'graphics/footskills_progress_1.svg' },
+      ],
+    }
+  },
+];
+
+// ─────────────────────────────────────────────
+//  AGE GROUP ZONE PRESETS
+//
+//  When the dropdown changes, these presets auto-fill the drop zones.
+//  Each key matches the <option> value in the topbar dropdown.
+//  Each zone id maps to a src path in graphics/.
+//  Zones with null are left empty.
+//
+//  Zone ids: 'prac-top', 'prac-mid', 'prac-bot', 'prog-center'
+// ─────────────────────────────────────────────
+const AGE_ZONE_PRESETS = {
+  U8: {
+    'prac-top':    '',
+    'prac-mid':    '',
+    'prac-bot':    '',
+    'prog-center': '',
+  },
+  U10: {
+    'prac-top':    'graphics/dribbling_3svg.svg',
+    'prac-mid':    'graphics/footskills_2.svg',
+    'prac-bot':    'graphics/footskills_3.svg',
+    'prog-center': 'graphics/footskills_progress_1.svg',
+  },
+  U12: {
+    'prac-top':    'graphics/dribbling_2.svg',
+    'prac-mid':    'graphics/footskills_3.svg',
+    'prac-bot':    'graphics/dribbling_3svg.svg',
+    'prog-center': 'graphics/dribbling_progress_1.svg',
+  },
+  U14: {
+    'prac-top':    'graphics/dribbling_3svg.svg',
+    'prac-mid':    'graphics/footskills_1.svg',
+    'prac-bot':    'graphics/footskills_2.svg',
+    'prog-center': 'graphics/footskills_progress_1.svg',
+  },
+  U19: {
+    'prac-top':    'graphics/footskills_3.svg',
+    'prac-mid':    'graphics/dribbling_2.svg',
+    'prac-bot':    'graphics/dribbling_3svg.svg',
+    'prog-center': 'graphics/footskills_progress_1.svg',
+  },
+};
+
+// ─────────────────────────────────────────────
+//  SET AGE GROUP — reloads sidebar graphics and drop zone presets
+// ─────────────────────────────────────────────
+function setAgeGroup(ageKey) {
+  const preset = AGE_ZONE_PRESETS[ageKey];
+  if (!preset) return;
+  // Rebuild sidebar with age-appropriate graphics
+  buildSidebar(ageKey);
+  // Reload zone presets
+  filledZones = {};
+  DROP_ZONES.forEach(z => {
+    if (preset[z.id]) filledZones[z.id] = { src: preset[z.id] };
+  });
+  rebuildZones();
+}
+
+// ─────────────────────────────────────────────
+//  Defines where graphics snap on the template.
+//  parent must match an element id in the HTML above.
+// ─────────────────────────────────────────────
+const DROP_ZONES = [
+  { id: 'prac-top',    parent: 'practice', label: 'Practice — Top',    x: '5%', y: '1%',  w: '90%', h: '33%' },
+  { id: 'prac-mid',    parent: 'practice', label: 'Practice — Middle', x: '5%', y: '34%', w: '90%', h: '33%' },
+  { id: 'prac-bot',    parent: 'practice', label: 'Practice — Bottom', x: '5%', y: '67%', w: '90%', h: '33%' },
+  { id: 'prog-center', parent: 'progress', label: 'Progress',          x: '5%', y: '10%', w: '90%', h: '74%' },
+];
+
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
+let filledZones = {};  // zoneId → { src: string }
+
+// ─────────────────────────────────────────────
+//  GRAPHIC PREVIEW
+// ─────────────────────────────────────────────
+const previewEl    = document.getElementById('graphic-preview');
+const previewInner = document.getElementById('preview-graphic-inner');
+const previewLabel = document.getElementById('preview-label');
+let   previewTimer = null;
+
+function showPreview(src, label, anchorEl) {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {
+    previewInner.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = label;
+    previewInner.appendChild(img);
+    previewLabel.textContent = label;
+
+    const sidebarRect = document.getElementById('sidebar').getBoundingClientRect();
+    const anchorRect  = anchorEl.getBoundingClientRect();
+    const previewW = 580, previewH = 175, margin = 10;
+
+    let left = sidebarRect.right + margin;
+    let top  = anchorRect.top + anchorRect.height / 2 - previewH / 2;
+    top = Math.max(margin, Math.min(top, window.innerHeight - previewH - margin));
+
+    previewEl.style.left  = left + 'px';
+    previewEl.style.top   = top + 'px';
+    previewEl.style.width = previewW + 'px';
+    previewEl.classList.add('visible');
+  }, 120);
+}
+
+function hidePreview() {
+  clearTimeout(previewTimer);
+  previewEl.classList.remove('visible');
+}
+
+// ─────────────────────────────────────────────
+//  BUILD SIDEBAR
+// ─────────────────────────────────────────────
+function buildSidebar(ageKey) {
+  const sidebar = document.getElementById('sidebar');
+  // Track which groups are currently open so we can restore them
+  const openGroups = new Set(
+    [...sidebar.querySelectorAll('.group.open')].map(el => el.id)
+  );
+  sidebar.querySelectorAll('.group').forEach(el => el.remove());
+
+  GRAPHIC_GROUPS.forEach(group => {
+    const div = document.createElement('div');
+    div.className = 'group';
+    div.id = 'grp-' + group.id;
+    if (openGroups.has(div.id)) div.classList.add('open');
+
+    // Header
+    const hdr = document.createElement('div');
+    hdr.className = 'group-header';
+    hdr.innerHTML = `
+      <span class="dot" style="background:${group.color}"></span>
+      <span class="gtitle" style="color:${group.color}">${group.name}</span>
+      <span class="chevron">&#9660;</span>
+    `;
+    hdr.addEventListener('click', () => div.classList.toggle('open'));
+
+    // Body
+    const body = document.createElement('div');
+    body.className = 'group-body';
+
+    // Grid
+    const grid = document.createElement('div');
+    grid.className = 'glist';
+    grid.id = 'grid-' + group.id;
+
+    body.appendChild(grid);
+    div.appendChild(hdr);
+    div.appendChild(body);
+    sidebar.insertBefore(div, sidebar.querySelector('.sidebar-hint'));
+
+    // Populate built-in items for this age group
+    const ageItems = (group.items[ageKey] || []);
+    ageItems.forEach(item => addGraphicToGrid(group.id, item.id, item.label, item.src));
+
+    if (ageItems.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'group-empty';
+      empty.textContent = 'No graphics for this age group';
+      grid.appendChild(empty);
+    }
+  });
+}
+
+// ─────────────────────────────────────────────
+//  ADD GRAPHIC ITEM TO GRID
+// ─────────────────────────────────────────────
+function addGraphicToGrid(groupId, itemId, label, src) {
+  const grid = document.getElementById('grid-' + groupId);
+  if (!grid) return;
+
+  const empty = grid.querySelector('.group-empty');
+  if (empty) empty.remove();
+
+  const el = document.createElement('div');
+  el.className = 'gitem';
+  el.draggable = true;
+  el.dataset.src   = src;
+  el.dataset.label = label;
+
+  const img = document.createElement('img');
+  img.src = src;
+  img.alt = label;
+  el.appendChild(img);
+
+  const lbl = document.createElement('span');
+  lbl.textContent = label;
+  el.appendChild(lbl);
+
+  el.addEventListener('dragstart', (e) => {
+    e.dataTransfer.setData('itemSrc', src);
+    e.dataTransfer.effectAllowed = 'copy';
+    hidePreview();
+  });
+
+  el.addEventListener('mouseenter', () => showPreview(src, label, el));
+  el.addEventListener('mouseleave', () => hidePreview());
+
+  grid.appendChild(el);
+}
+
+// ─────────────────────────────────────────────
+//  BUILD / REBUILD DROP ZONES
+// ─────────────────────────────────────────────
+function buildZones() {
+  DROP_ZONES.forEach(z => {
+    const parent = document.getElementById(z.parent);
+    if (!parent) return;
+
+    const div = document.createElement('div');
+    div.className = 'snap-zone' + (filledZones[z.id] ? ' filled' : '');
+    div.dataset.zid = z.id;
+    div.style.left   = z.x;
+    div.style.top    = z.y;
+    div.style.width  = z.w;
+    div.style.height = z.h;
+
+    if (filledZones[z.id]) {
+      const placed = document.createElement('div');
+      placed.className = 'placed';
+      const img = document.createElement('img');
+      img.src = filledZones[z.id].src;
+      img.alt = 'placed graphic';
+      placed.appendChild(img);
+      div.appendChild(placed);
+
+      const rmv = document.createElement('button');
+      rmv.className = 'rmv-btn';
+      rmv.textContent = '✕';
+      rmv.title = 'Remove';
+      rmv.addEventListener('click', (e) => {
+        e.stopPropagation();
+        delete filledZones[z.id];
+        rebuildZones();
+      });
+      div.appendChild(rmv);
+    } else {
+      const lbl = document.createElement('div');
+      lbl.className = 'zlbl';
+      lbl.textContent = z.label;
+      div.appendChild(lbl);
+    }
+
+    div.addEventListener('dragover',  (e) => { e.preventDefault(); div.classList.add('over'); });
+    div.addEventListener('dragleave', ()  => div.classList.remove('over'));
+    div.addEventListener('drop', (e) => {
+      e.preventDefault();
+      div.classList.remove('over');
+      const src = e.dataTransfer.getData('itemSrc');
+      if (src) {
+        filledZones[z.id] = { src };
+        rebuildZones();
+      }
+    });
+
+    parent.appendChild(div);
+  });
+}
+
+function rebuildZones() {
+  DROP_ZONES.forEach(z => {
+    const el = document.querySelector(`.snap-zone[data-zid="${z.id}"]`);
+    if (el) el.remove();
+  });
+  buildZones();
+}
+
+// ─────────────────────────────────────────────
+//  CONTROLS
+// ─────────────────────────────────────────────
+function clearAll() {
+  filledZones = {};
+  rebuildZones();
+}
+
+function doPrint() {
+  window.print();
+}
+
+// ─────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────
+buildZones();
+setAgeGroup('U12'); // builds sidebar + loads zone preset for default selection
+
+// Open first group by default
+const firstGroup = document.querySelector('.group');
+if (firstGroup) firstGroup.classList.add('open');
+</script>
+</body>
+</html>
